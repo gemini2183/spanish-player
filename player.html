@@ -319,14 +319,16 @@
   // ── LOAD ──
   function loadAndStart() {
     const text = document.getElementById('tsv-input').value.trim();
-    const lines = text.split('\n');
+    const lines = text.split(/\r?\n/);
     cards = [];
     for (const line of lines) {
-      if (line.startsWith('Front\t') || !line.trim()) continue;
-      const parts = line.split('\t');
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (/^front\t/i.test(trimmed)) continue;
+      const parts = trimmed.split('\t');
       if (parts.length < 2) continue;
       const front = parts[0].trim();
-      const back_ru = parts[1].trim();
+      const back_ru = parts[1].trim().replace(/\\n/g, ' ');
       if (front && back_ru) cards.push({ front, back_ru });
     }
     if (!cards.length) { alert('Не удалось загрузить карточки.'); return; }
