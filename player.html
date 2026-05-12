@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spanish Player</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Georgia, serif;
+      background: #1a1a2e;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      user-select: none;
+    }
+
+    /* ── LOAD SCREEN ── */
+    #load-screen {
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    #load-screen h2 {
+      font-size: 20px;
+      font-weight: normal;
+      color: #e8d5a3;
+      margin-bottom: 8px;
+    }
+
+    #load-screen p {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    #load-screen textarea {
+      width: 100%;
+      height: 160px;
+      background: #0d0d1a;
+      border: 1px solid #333;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      resize: none;
+      margin-bottom: 14px;
+    }
+
+    .settings-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .setting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .setting input[type=number] {
+      width: 60px;
+      background: #0d0d1a;
+      border: 1px solid #333;
+      color: #ccc;
+      font-family: Georgia, serif;
+      font-size: 15px;
+      padding: 6px;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    /* ── PLAYER ── */
+    #player-screen { display: none; width: 100%; max-width: 500px; text-align: center; }
+
+    #block-info {
+      font-size: 12px;
+      color: #444;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    #progress {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 28px;
+    }
+
+    #spanish {
+      font-size: 34px;
+      color: #e8d5a3;
+      margin-bottom: 14px;
+      min-height: 46px;
+    }
+
+    #translation {
+      font-size: 22px;
+      color: #a8c8a8;
+      min-height: 30px;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    #translation.visible { opacity: 1; }
+
+    #phase-label {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #333;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      min-height: 16px;
+    }
+
+    #timer-wrap {
+      width: 100%;
+      height: 3px;
+      background: #222;
+      border-radius: 2px;
+      margin-top: 24px;
+      overflow: hidden;
+    }
+
+    #timer-bar {
+      height: 100%;
+      background: #e8d5a3;
+      width: 0%;
+    }
+
+    #controls {
+      margin-top: 36px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      padding: 9px 20px;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 30px;
+      transition: all 0.2s;
+    }
+
+    button:hover { border-color: #666; color: #fff; }
+
+    #play-btn {
+      background: #e8d5a3;
+      color: #1a1a2e;
+      border-color: #e8d5a3;
+      font-size: 16px;
+      padding: 11px 32px;
+    }
+
+    #play-btn:hover { background: #f0e0b0; border-color: #f0e0b0; }
+
+    .primary {
+      background: #e8d5a3;
+      color: #1a1a2e;
+      border-color: #e8d5a3;
+      padding: 10px 32px;
+      font-size: 15px;
+    }
+
+    .primary:hover { background: #f0e0b0; }
+
+    #bottom-row {
+      margin-top: 24px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #444;
+    }
+
+    .slider-group input { width: 80px; accent-color: #e8d5a3; }
+
+    #reload-btn {
+      font-size: 12px;
+      padding: 6px 14px;
+      color: #444;
+      border-color: #222;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ЗАГРУЗКА -->
+<div id="load-screen">
+  <h2>Spanish Player</h2>
+  <p>Вставь TSV из Claude или из export_today</p>
+  <textarea id="tsv-input" placeholder="Front	Back_ru	..."></textarea>
+
+  <div class="settings-row">
+    <div class="setting">
+      <span>Слов в блоке</span>
+      <input type="number" id="block-size" value="10" min="1" max="100">
+    </div>
+    <div class="setting">
+      <span>Повторений блока</span>
+      <input type="number" id="block-reps" value="3" min="1" max="10">
+    </div>
+    <div class="setting">
+      <span>Пауза (сек)</span>
+      <input type="number" id="pause-input" value="3" min="1" max="10" step="0.5">
+    </div>
+  </div>
+
+  <button class="primary" onclick="loadAndStart()">▶ Загрузить и играть</button>
+</div>
+
+<!-- ПЛЕЕР -->
+<div id="player-screen">
+  <div id="block-info"></div>
+  <div id="progress"></div>
+  <div id="spanish"></div>
+  <div id="translation"></div>
+  <div id="phase-label"></div>
+  <div id="timer-wrap"><div id="timer-bar"></div></div>
+
+  <div id="controls">
+    <button onclick="prevCard()">◀</button>
+    <button id="play-btn" onclick="togglePlay()">▶ Старт</button>
+    <button onclick="nextCard()">▶</button>
+  </div>
+
+  <div id="bottom-row">
+    <div class="slider-group">
+      <span>Пауза:</span>
+      <input type="range" id="pause-slider" min="1" max="10" step="0.5" value="3">
+      <span id="pause-val">3 сек</span>
+    </div>
+    <button id="reload-btn" onclick="resetToLoad()">Загрузить новые</button>
+  </div>
+</div>
+
+<script>
+  const synth = window.speechSynthesis;
+
+  let cards = [];
+  let blockSize = 10;
+  let blockReps = 3;
+  let pauseSec = 3;
+
+  // Позиция
+  let blockIdx = 0;    // номер текущего блока
+  let repIdx = 0;      // номер повторения внутри блока
+  let cardIdx = 0;     // индекс внутри блока
+
+  let playing = false;
+  let phase = 'spanish';
+  let timer = null;
+
+  // ── LOAD ──
+  function loadAndStart() {
+    const text = document.getElementById('tsv-input').value.trim();
+    const lines = text.split('\n');
+    cards = [];
+    for (const line of lines) {
+      if (line.startsWith('Front\t') || !line.trim()) continue;
+      const parts = line.split('\t');
+      if (parts.length < 2) continue;
+      const front = parts[0].trim();
+      const back_ru = parts[1].trim();
+      if (front && back_ru) cards.push({ front, back_ru });
+    }
+    if (!cards.length) { alert('Не удалось загрузить карточки.'); return; }
+
+    blockSize = parseInt(document.getElementById('block-size').value) || 10;
+    blockReps = parseInt(document.getElementById('block-reps').value) || 3;
+    pauseSec = parseFloat(document.getElementById('pause-input').value) || 3;
+
+    document.getElementById('pause-slider').value = pauseSec;
+    document.getElementById('pause-val').textContent = pauseSec + ' сек';
+
+    // Восстанавливаем позицию если есть
+    const saved = loadState();
+    if (saved && saved.total === cards.length) {
+      blockIdx = saved.blockIdx;
+      repIdx = saved.repIdx;
+      cardIdx = saved.cardIdx;
+      phase = saved.phase || 'spanish';
+    } else {
+      blockIdx = 0; repIdx = 0; cardIdx = 0; phase = 'spanish';
+    }
+
+    document.getElementById('load-screen').style.display = 'none';
+    document.getElementById('player-screen').style.display = 'block';
+    renderCard();
+  }
+
+  function resetToLoad() {
+    stopAll();
+    playing = false;
+    document.getElementById('player-screen').style.display = 'none';
+    document.getElementById('load-screen').style.display = 'block';
+    document.getElementById('play-btn').textContent = '▶ Старт';
+  }
+
+  // ── STATE ──
+  function saveState() {
+    localStorage.setItem('sp_state', JSON.stringify({
+      total: cards.length, blockIdx, repIdx, cardIdx, phase,
+      blockSize, blockReps, pauseSec
+    }));
+  }
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem('sp_state')); } catch { return null; }
+  }
+
+  // ── CARD INFO ──
+  function currentCard() {
+    const start = blockIdx * blockSize;
+    const end = Math.min(start + blockSize, cards.length);
+    const block = cards.slice(start, end);
+    return block[cardIdx % block.length];
+  }
+
+  function blockCount() { return Math.ceil(cards.length / blockSize); }
+
+  function currentBlockCards() {
+    const start = blockIdx * blockSize;
+    return cards.slice(start, Math.min(start + blockSize, cards.length));
+  }
+
+  // ── RENDER ──
+  function renderCard() {
+    const card = currentCard();
+    if (!card) return;
+
+    const block = currentBlockCards();
+    const totalBlocks = blockCount();
+
+    document.getElementById('block-info').textContent =
+      `Блок ${blockIdx + 1} из ${totalBlocks} · Повторение ${repIdx + 1} из ${blockReps}`;
+    document.getElementById('progress').textContent =
+      `Слово ${cardIdx + 1} из ${block.length}`;
+    document.getElementById('spanish').textContent = card.front;
+    document.getElementById('translation').textContent = card.back_ru;
+    document.getElementById('translation').classList.remove('visible');
+    document.getElementById('phase-label').textContent = '';
+    stopTimer();
+    saveState();
+  }
+
+  // ── PLAYBACK ──
+  function speak(text, lang, onEnd) {
+    synth.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang;
+    utt.rate = 0.9;
+    utt.onend = () => { if (playing) onEnd(); };
+    utt.onerror = () => { if (playing) onEnd(); };
+    synth.speak(utt);
+  }
+
+  function startTimer(sec, onEnd) {
+    const bar = document.getElementById('timer-bar');
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      bar.style.transition = `width ${sec}s linear`;
+      bar.style.width = '100%';
+    }));
+    timer = setTimeout(() => { if (playing) onEnd(); }, sec * 1000);
+  }
+
+  function stopTimer() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    const bar = document.getElementById('timer-bar');
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+  }
+
+  function stopAll() {
+    synth.cancel();
+    stopTimer();
+  }
+
+  function playSpanish() {
+    phase = 'spanish';
+    const card = currentCard();
+    document.getElementById('phase-label').textContent = 'слушай';
+    document.getElementById('translation').classList.remove('visible');
+    speak(card.front, 'es-ES', () => {
+      startTimer(pauseSec, playTranslation);
+    });
+  }
+
+  function playTranslation() {
+    phase = 'translation';
+    const card = currentCard();
+    document.getElementById('translation').classList.add('visible');
+    document.getElementById('phase-label').textContent = 'перевод';
+    speak(card.back_ru, 'ru-RU', () => {
+      startTimer(pauseSec, advance);
+    });
+  }
+
+  function advance() {
+    const block = currentBlockCards();
+
+    // Следующая карточка в блоке
+    if (cardIdx + 1 < block.length) {
+      cardIdx++;
+      renderCard();
+      playSpanish();
+      return;
+    }
+
+    // Конец блока — следующее повторение
+    if (repIdx + 1 < blockReps) {
+      repIdx++;
+      cardIdx = 0;
+      renderCard();
+      playSpanish();
+      return;
+    }
+
+    // Конец повторений — следующий блок
+    if (blockIdx + 1 < blockCount()) {
+      blockIdx++;
+      repIdx = 0;
+      cardIdx = 0;
+      renderCard();
+      playSpanish();
+      return;
+    }
+
+    // Всё закончено
+    playing = false;
+    document.getElementById('play-btn').textContent = '▶ Заново';
+    document.getElementById('phase-label').textContent = 'готово ✓';
+    blockIdx = 0; repIdx = 0; cardIdx = 0; phase = 'spanish';
+    saveState();
+  }
+
+  function togglePlay() {
+    if (!cards.length) return;
+    if (playing) {
+      playing = false;
+      stopAll();
+      document.getElementById('play-btn').textContent = '▶ Продолжить';
+      document.getElementById('phase-label').textContent = '';
+    } else {
+      playing = true;
+      document.getElementById('play-btn').textContent = '⏸ Пауза';
+      playSpanish();
+    }
+  }
+
+  function nextCard() {
+    stopAll(); playing = false;
+    document.getElementById('play-btn').textContent = '▶ Продолжить';
+    const block = currentBlockCards();
+    if (cardIdx + 1 < block.length) { cardIdx++; }
+    else if (repIdx + 1 < blockReps) { repIdx++; cardIdx = 0; }
+    else if (blockIdx + 1 < blockCount()) { blockIdx++; repIdx = 0; cardIdx = 0; }
+    renderCard();
+  }
+
+  function prevCard() {
+    stopAll(); playing = false;
+    document.getElementById('play-btn').textContent = '▶ Продолжить';
+    if (cardIdx > 0) { cardIdx--; }
+    else if (repIdx > 0) { repIdx--; cardIdx = currentBlockCards().length - 1; }
+    else if (blockIdx > 0) { blockIdx--; repIdx = blockReps - 1; cardIdx = currentBlockCards().length - 1; }
+    renderCard();
+  }
+
+  // Слайдер паузы
+  document.getElementById('pause-slider').addEventListener('input', function() {
+    pauseSec = parseFloat(this.value);
+    document.getElementById('pause-val').textContent = pauseSec + ' сек';
+  });
+
+  // Восстановить настройки из localStorage
+  const saved = loadState();
+  if (saved) {
+    document.getElementById('block-size').value = saved.blockSize || 10;
+    document.getElementById('block-reps').value = saved.blockReps || 3;
+    document.getElementById('pause-input').value = saved.pauseSec || 3;
+  }
+</script>
+</body>
+</html>
