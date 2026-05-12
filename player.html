@@ -227,8 +227,12 @@
       <input type="number" id="block-reps" value="3" min="1" max="10">
     </div>
     <div class="setting">
-      <span>Пауза (сек)</span>
-      <input type="number" id="pause-input" value="3" min="1" max="10" step="0.5">
+      <span>Пауза после слова</span>
+      <input type="number" id="pause-input" value="3" min="0.5" max="15" step="0.5">
+    </div>
+    <div class="setting">
+      <span>Пауза после перевода</span>
+      <input type="number" id="pause-after-input" value="2" min="0.5" max="15" step="0.5">
     </div>
   </div>
 
@@ -252,9 +256,14 @@
 
   <div id="bottom-row">
     <div class="slider-group">
-      <span>Пауза:</span>
-      <input type="range" id="pause-slider" min="1" max="10" step="0.5" value="3">
+      <span>После слова:</span>
+      <input type="range" id="pause-slider" min="0.5" max="15" step="0.5" value="3">
       <span id="pause-val">3 сек</span>
+    </div>
+    <div class="slider-group">
+      <span>После перевода:</span>
+      <input type="range" id="pause-after-slider" min="0.5" max="15" step="0.5" value="2">
+      <span id="pause-after-val">2 сек</span>
     </div>
     <button id="reload-btn" onclick="resetToLoad()">Загрузить новые</button>
   </div>
@@ -267,6 +276,7 @@
   let blockSize = 10;
   let blockReps = 3;
   let pauseSec = 3;
+  let pauseAfterSec = 2;
 
   // Позиция
   let blockIdx = 0;    // номер текущего блока
@@ -295,9 +305,12 @@
     blockSize = parseInt(document.getElementById('block-size').value) || 10;
     blockReps = parseInt(document.getElementById('block-reps').value) || 3;
     pauseSec = parseFloat(document.getElementById('pause-input').value) || 3;
+    pauseAfterSec = parseFloat(document.getElementById('pause-after-input').value) || 2;
 
     document.getElementById('pause-slider').value = pauseSec;
     document.getElementById('pause-val').textContent = pauseSec + ' сек';
+    document.getElementById('pause-after-slider').value = pauseAfterSec;
+    document.getElementById('pause-after-val').textContent = pauseAfterSec + ' сек';
 
     // Восстанавливаем позицию если есть
     const saved = loadState();
@@ -327,7 +340,7 @@
   function saveState() {
     localStorage.setItem('sp_state', JSON.stringify({
       total: cards.length, blockIdx, repIdx, cardIdx, phase,
-      blockSize, blockReps, pauseSec
+      blockSize, blockReps, pauseSec, pauseAfterSec
     }));
   }
 
@@ -412,6 +425,7 @@
     speak(card.front, 'es-ES', () => {
       startTimer(pauseSec, playTranslation);
     });
+
   }
 
   function playTranslation() {
@@ -420,7 +434,7 @@
     document.getElementById('translation').classList.add('visible');
     document.getElementById('phase-label').textContent = 'перевод';
     speak(card.back_ru, 'ru-RU', () => {
-      startTimer(pauseSec, advance);
+      startTimer(pauseAfterSec, advance);
     });
   }
 
@@ -495,10 +509,14 @@
     renderCard();
   }
 
-  // Слайдер паузы
   document.getElementById('pause-slider').addEventListener('input', function() {
     pauseSec = parseFloat(this.value);
     document.getElementById('pause-val').textContent = pauseSec + ' сек';
+  });
+
+  document.getElementById('pause-after-slider').addEventListener('input', function() {
+    pauseAfterSec = parseFloat(this.value);
+    document.getElementById('pause-after-val').textContent = pauseAfterSec + ' сек';
   });
 
   // Восстановить настройки из localStorage
@@ -507,6 +525,7 @@
     document.getElementById('block-size').value = saved.blockSize || 10;
     document.getElementById('block-reps').value = saved.blockReps || 3;
     document.getElementById('pause-input').value = saved.pauseSec || 3;
+    document.getElementById('pause-after-input').value = saved.pauseAfterSec || 2;
   }
 </script>
 </body>
