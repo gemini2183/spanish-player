@@ -450,10 +450,12 @@
       if (!data.audioContent) throw new Error('no audio');
       const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
       audio.onended = () => { if (playing) onEnd(); };
-      audio.onerror = () => { if (playing) onEnd(); };
-      audio.play();
+      audio.onerror = () => { speakBrowser(text, lang, onEnd); };
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => { speakBrowser(text, lang, onEnd); });
+      }
     } catch(e) {
-      // fallback на браузерный
       speakBrowser(text, lang, onEnd);
     }
   }
