@@ -236,6 +236,15 @@
     </div>
   </div>
 
+  <div style="margin-bottom:14px;">
+    <div class="setting" style="flex-direction:row; gap:8px; justify-content:center;">
+      <span style="color:#555; font-size:12px;">Google TTS API ключ:</span>
+      <input type="password" id="api-key-input" placeholder="AIza..." style="width:200px; background:#0d0d1a; border:1px solid #333; color:#ccc; font-family:monospace; font-size:12px; padding:6px; border-radius:4px;">
+      <button onclick="saveApiKey()" style="padding:5px 12px; font-size:12px;">Сохранить</button>
+    </div>
+    <div id="api-key-status" style="font-size:11px; color:#555; margin-top:4px; text-align:center;"></div>
+  </div>
+
   <button class="primary" onclick="loadAndStart()">▶ Загрузить и играть</button>
 </div>
 
@@ -271,6 +280,26 @@
 
 <script>
   const synth = window.speechSynthesis;
+  let apiKey = localStorage.getItem('google_tts_key') || '';
+
+  // Голоса Google TTS
+  const GOOGLE_VOICE_ES = 'es-ES-Neural2-B';  // мужской испанский
+  const GOOGLE_VOICE_RU = 'ru-RU-Neural2-D';  // мужской русский
+
+  function saveApiKey() {
+    const val = document.getElementById('api-key-input').value.trim();
+    if (!val) return;
+    apiKey = val;
+    localStorage.setItem('google_tts_key', val);
+    document.getElementById('api-key-status').textContent = '✓ Ключ сохранён';
+    document.getElementById('api-key-input').value = '';
+  }
+
+  function showSavedKey() {
+    if (apiKey) {
+      document.getElementById('api-key-status').textContent = '✓ Ключ сохранён';
+    }
+  }
 
   let cards = [];
   let blockSize = 10;
@@ -385,6 +414,14 @@
 
   // ── PLAYBACK ──
   function speak(text, lang, onEnd) {
+    if (apiKey) {
+      speakGoogle(text, lang, onEnd);
+    } else {
+      speakBrowser(text, lang, onEnd);
+    }
+  }
+
+  function speakBrowser(text, lang, onEnd) {
     synth.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = lang;
@@ -392,6 +429,31 @@
     utt.onend = () => { if (playing) onEnd(); };
     utt.onerror = () => { if (playing) onEnd(); };
     synth.speak(utt);
+  }
+
+  async function speakGoogle(text, lang, onEnd) {
+    const voiceName = lang === 'es-ES' ? GOOGLE_VOICE_ES : GOOGLE_VOICE_RU;
+    const langCode = lang === 'es-ES' ? 'es-ES' : 'ru-RU';
+    try {
+      const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { text },
+          voice: { languageCode: langCode, name: voiceName },
+          audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
+        })
+      });
+      const data = await resp.json();
+      if (!data.audioContent) throw new Error('no audio');
+      const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
+      audio.onended = () => { if (playing) onEnd(); };
+      audio.onerror = () => { if (playing) onEnd(); };
+      audio.play();
+    } catch(e) {
+      // fallback на браузерный
+      speakBrowser(text, lang, onEnd);
+    }
   }
 
   function startTimer(sec, onEnd) {
@@ -518,6 +580,8 @@
     pauseAfterSec = parseFloat(this.value);
     document.getElementById('pause-after-val').textContent = pauseAfterSec + ' сек';
   });
+
+  showSavedKey();
 
   // Восстановить настройки из localStorage
   const saved = loadState();
